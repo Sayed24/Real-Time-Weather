@@ -1,11 +1,11 @@
 /* Weather • Material 3 Dashboard (with custom SVG icons, hourly Chart.js, favorites)
-   - Insert your OpenWeatherMap API key below
+   - API key is embedded below (from user input)
    - Features: dual units display, loader fixed, custom SVG icons (material style),
      hourly chart (Chart.js, next ~24h), favorites list (localStorage), suggestions,
      geolocation, 5-day forecast, theme toggle.
 */
 
-const OWM_KEY = "ffa6785971f790f0d310af9923f0de7b>"; // <-- add your key
+const OWM_KEY = "ffa6785971f790f0d310af9923f0de7b"; // <-- USER KEY INSERTED
 
 // DOM refs
 const app = document.getElementById('app');
@@ -119,7 +119,7 @@ function svgDataFor(main, description){
   return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
 }
 
-// ---------- API calls ----------
+// ---------- API helpers ----------
 async function fetchJSON(url){
   const res = await fetch(url);
   if(!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
