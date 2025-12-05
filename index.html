@@ -6,6 +6,8 @@
   <title>Weather • Material Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☀️</text></svg>">
   <link rel="stylesheet" href="style.css" />
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <main class="app" id="app">
@@ -36,7 +38,11 @@
           <button id="locBtn" class="btn outline">Use My Location</button>
         </div>
       </div>
-      <div class="last-saved muted" id="lastSaved">Last: —</div>
+
+      <div class="last-favorites">
+        <div class="last-saved muted" id="lastSaved">Last: —</div>
+        <button id="addFavBtn" class="btn outline small">☆ Add Favorite</button>
+      </div>
     </section>
 
     <section class="dashboard">
@@ -47,6 +53,7 @@
             <div class="desc" id="weatherDesc">—</div>
           </div>
           <div class="temp-block">
+            <!-- still an <img> so nothing removed; we will set src to SVG data URIs -->
             <img id="weatherIcon" src="" alt="" class="weather-icon" />
             <div class="temp-value">
               <!-- Primary temp (follows unit preference) -->
@@ -87,6 +94,16 @@
         <div class="forecast-title">5-Day Forecast</div>
         <div class="forecast-list" id="forecastList">
           <!-- forecast cards injected here -->
+        </div>
+
+        <div class="hourly-chart-section">
+          <div class="hourly-title">Next 24 hours</div>
+          <canvas id="hourlyChart" height="120"></canvas>
+        </div>
+
+        <div class="favorites-section card small-card" id="favoritesCard">
+          <div class="fav-title">Favorites</div>
+          <ul id="favoritesList" class="favorites-list"></ul>
         </div>
       </div>
     </section>
