@@ -169,3 +169,35 @@ html,body{height:100%; margin:0; font-family:Inter, ui-sans-serif, system-ui, -a
   .weather-icon{width:64px;height:64px;}
   .forecast-item{flex:0 0 120px; padding:8px;}
 }
+
+/* ========== ADDITIVE FIXES (do not remove) ========== */
+
+/* Ensure [hidden] actually hides on all browsers (iPhone Chrome/Safari) */
+[hidden] {
+  display: none !important;
+}
+
+/* Ensure page fills viewport on mobile and iOS properly */
+html, body {
+  min-height: 100vh;
+  height: auto;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Smooth scrolling on iOS for overflow areas */
+.forecast-list, .suggestions {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent the fixed 380px column from breaking very narrow phones */
+@media (max-width:480px) {
+  .dashboard {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Slightly reduce forecast item width for very small screens */
+  .forecast-item { flex: 0 0 110px !important; }
+}
+
+/* make sure main is readable even if JS errors */
+.app { opacity: 1; visibility: visible; }
