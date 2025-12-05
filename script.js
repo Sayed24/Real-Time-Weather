@@ -49,12 +49,29 @@ let suggestionsList = [
 ];
 
 // ---------- loader & toast ----------
+let loaderWatchdog = null;
 function showLoader(show = true){
+  // added watchdog to avoid stuck loader
   if(show){
+    // clear previous watchdog
+    if(loaderWatchdog) { clearTimeout(loaderWatchdog); loaderWatchdog = null; }
     loader.hidden = false;
     app.style.filter = 'blur(2px)';
     app.style.pointerEvents = 'none';
+
+    // watchdog: auto-hide loader if something unexpectedly fails to clear it
+    loaderWatchdog = setTimeout(()=>{
+      // If loader still visible after 12s, hide and show message
+      if(!loader.hidden){
+        loader.hidden = true;
+        app.style.filter = '';
+        app.style.pointerEvents = '';
+        showToast('Taking too long — try again (network or API error).');
+        console.warn('Loader watchdog fired: hiding loader to avoid stuck UI.');
+      }
+    }, 12000);
   } else {
+    if(loaderWatchdog) { clearTimeout(loaderWatchdog); loaderWatchdog = null; }
     loader.hidden = true;
     app.style.filter = '';
     app.style.pointerEvents = '';
@@ -66,6 +83,19 @@ function showToast(msg, ms=3500){
   toast.hidden = false;
   setTimeout(()=> toast.hidden = true, ms);
 }
+
+// ---------- global safety handlers (hide loader on unhandled errors) ----------
+window.addEventListener('error', (ev) => {
+  console.error('Unhandled error', ev.error || ev);
+  // hide loader and notify user
+  showLoader(false);
+  showToast('An unexpected error occurred.');
+});
+window.addEventListener('unhandledrejection', (ev) => {
+  console.error('Unhandled rejection', ev.reason || ev);
+  showLoader(false);
+  showToast('An unexpected network error occurred.');
+});
 
 // ---------- helpers ----------
 function capitalize(s){ if(!s) return ''; return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -499,3 +529,37 @@ async function fetchCurrentByCoords(lat, lon){
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric`;
   return fetchJSON(url);
 }
+
+/* ----------------------------
+  ADDITIONS (no removals): responsiveness helpers & chart resize watchers
+   - ensures chart resizes on window changes,
+   - ensures loader always cleared on slow networks,
+   - ensures app becomes usable in all code paths.
+   - These are additive and do not remove or change your original logic.
+-----------------------------*/
+
+// Resize handler for Chart.js and minor layout fixes
+window.addEventListener('resize', () => {
+  try {
+    if(hourlyChart && typeof hourlyChart.resize === 'function') hourlyChart.resize();
+  } catch(e){ /* ignore */ }
+});
+
+// Additional safety: if loader accidentally stays visible when DOM becomes idle, hide it after 20s
+setTimeout(()=> {
+  if(!loader.hidden){
+    loader.hidden = true;
+    app.style.filter = '';
+    app.style.pointerEvents = '';
+    showToast('Loader cleared automatically.');
+    console.warn('Auto-cleared loader after 20s (safety).');
+  }
+}, 20000);
+
+// Ensure app is visible on initial script run (covers cases where style.display was changed externally)
+document.addEventListener('DOMContentLoaded', ()=> {
+  if(app) {
+    app.style.opacity = 1;
+    app.style.visibility = 'visible';
+  }
+});
