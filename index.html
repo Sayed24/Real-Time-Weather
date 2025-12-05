@@ -1,1 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Weather • Material Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☀️</text></svg>">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app" id="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">W</div>
+        <div class="title">
+          <div class="h1">Weather</div>
+          <div class="muted">Material 3 Dashboard</div>
+        </div>
+      </div>
 
+      <div class="controls">
+        <div class="unit-toggle" id="unitToggle" title="Toggle °C / °F">°C</div>
+        <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌓</button>
+      </div>
+    </header>
+
+    <section class="search-section card">
+      <div class="search-left">
+        <input id="cityInput" class="search-input" placeholder="Search city, e.g. London" />
+        <div class="search-actions">
+          <button id="searchBtn" class="btn">Search</button>
+          <button id="locBtn" class="btn outline">Use My Location</button>
+        </div>
+      </div>
+      <div class="last-saved muted" id="lastSaved">Last: —</div>
+    </section>
+
+    <section class="dashboard">
+      <div class="current card" id="currentCard" aria-live="polite">
+        <div class="current-top">
+          <div>
+            <div class="city" id="cityName">—</div>
+            <div class="desc" id="weatherDesc">—</div>
+          </div>
+          <div class="temp-block">
+            <img id="weatherIcon" src="" alt="" class="weather-icon" />
+            <div class="temp-value">
+              <div id="tempNow">—°</div>
+              <div class="feels muted" id="feelsLike">Feels like —°</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="current-stats">
+          <div class="stat">
+            <div class="stat-value" id="humidity">—%</div>
+            <div class="stat-label">Humidity</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="wind">— m/s</div>
+            <div class="stat-label">Wind</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="pressure">— hPa</div>
+            <div class="stat-label">Pressure</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="clouds">—%</div>
+            <div class="stat-label">Clouds</div>
+          </div>
+        </div>
+
+        <div class="sun-times">
+          <div>Sunrise: <span id="sunrise">—</span></div>
+          <div>Sunset: <span id="sunset">—</span></div>
+        </div>
+      </div>
+
+      <div class="forecast card" id="forecastCard">
+        <div class="forecast-title">5-Day Forecast</div>
+        <div class="forecast-list" id="forecastList">
+          <!-- forecast cards injected here -->
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer muted">
+      <div>Built with ❤️ • OpenWeatherMap API • Material 3 design</div>
+      <div class="small">Tip: Save your API key in a GitHub Pages secret? (public sites need client-side key; keep limits in mind)</div>
+    </footer>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <div id="loader" class="loader" hidden>
+      <div class="spinner"></div>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
