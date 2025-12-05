@@ -48,6 +48,9 @@ let suggestionsList = [
   "Kabul","Herat","Tokyo","Sydney","Paris","Rome","Madrid"
 ];
 
+/* ---------- ADDITION: prevent init running multiple times ---------- */
+let appInitialized = false;
+
 // ---------- loader & toast ----------
 let loaderWatchdog = null;
 function showLoader(show = true){
@@ -55,30 +58,28 @@ function showLoader(show = true){
   if(show){
     // clear previous watchdog
     if(loaderWatchdog) { clearTimeout(loaderWatchdog); loaderWatchdog = null; }
-    loader.hidden = false;
-    app.style.filter = 'blur(2px)';
-    app.style.pointerEvents = 'none';
+    if (loader) loader.hidden = false;
+    if (app) { app.style.filter = 'blur(2px)'; app.style.pointerEvents = 'none'; }
 
     // watchdog: auto-hide loader if something unexpectedly fails to clear it
     loaderWatchdog = setTimeout(()=>{
       // If loader still visible after 12s, hide and show message
-      if(!loader.hidden){
+      if(loader && !loader.hidden){
         loader.hidden = true;
-        app.style.filter = '';
-        app.style.pointerEvents = '';
+        if (app) { app.style.filter = ''; app.style.pointerEvents = ''; }
         showToast('Taking too long — try again (network or API error).');
         console.warn('Loader watchdog fired: hiding loader to avoid stuck UI.');
       }
     }, 12000);
   } else {
     if(loaderWatchdog) { clearTimeout(loaderWatchdog); loaderWatchdog = null; }
-    loader.hidden = true;
-    app.style.filter = '';
-    app.style.pointerEvents = '';
+    if (loader) loader.hidden = true;
+    if (app) { app.style.filter = ''; app.style.pointerEvents = ''; }
   }
 }
 
 function showToast(msg, ms=3500){
+  if(!toast) return;
   toast.textContent = msg;
   toast.hidden = false;
   setTimeout(()=> toast.hidden = true, ms);
@@ -109,6 +110,7 @@ function cToF(c){ return (c * 9/5) + 32; }
 function formatWind(ms){ const mph = Math.round(ms * 2.23694); return `${ms} m/s (${mph} mph)`; }
 function setWeatherBg(main){
   const appRoot = document.querySelector('.app');
+  if(!appRoot) return;
   appRoot.classList.remove('sunny','rainy','cloudy','snow');
   if(!main) return;
   main = main.toLowerCase();
@@ -185,39 +187,38 @@ function renderCurrent(data){
   if(!data) return;
   const main = data.weather && data.weather[0] ? data.weather[0].main : '';
   const desc = data.weather && data.weather[0] ? data.weather[0].description : '';
-  cityNameEl.textContent = `${data.name}, ${data.sys.country}`;
-  weatherDesc.textContent = capitalize(desc || '—');
+  if(cityNameEl) cityNameEl.textContent = `${data.name}, ${data.sys.country}`;
+  if(weatherDesc) weatherDesc.textContent = capitalize(desc || '—');
 
   // use our custom SVGs (material-style) as data-URIs
-  weatherIcon.src = svgDataFor(main, desc);
-  weatherIcon.alt = desc || '';
+  if(weatherIcon) { weatherIcon.src = svgDataFor(main, desc); weatherIcon.alt = desc || ''; }
 
   const tempC = Math.round(data.main.temp);
   const tempF = Math.round(cToF(tempC));
   // show primary according to unitPref
   if(unitPref === 'metric'){
-    tempNow.textContent = `${tempC}°C`;
-    feelsLikeEl.textContent = `Feels like ${Math.round(data.main.feels_like)}°C`;
+    if(tempNow) tempNow.textContent = `${tempC}°C`;
+    if(feelsLikeEl) feelsLikeEl.textContent = `Feels like ${Math.round(data.main.feels_like)}°C`;
   } else {
-    tempNow.textContent = `${tempF}°F`;
-    feelsLikeEl.textContent = `Feels like ${Math.round(cToF(data.main.feels_like))}°F`;
+    if(tempNow) tempNow.textContent = `${tempF}°F`;
+    if(feelsLikeEl) feelsLikeEl.textContent = `Feels like ${Math.round(cToF(data.main.feels_like))}°F`;
   }
-  tempBoth.textContent = `${tempC}°C / ${tempF}°F`;
+  if(tempBoth) tempBoth.textContent = `${tempC}°C / ${tempF}°F`;
 
-  humidityEl.textContent = `${data.main.humidity}%`;
-  windEl.textContent = formatWind(data.wind.speed);
-  pressureEl.textContent = `${data.main.pressure} hPa`;
-  cloudsEl.textContent = `${data.clouds && data.clouds.all ? data.clouds.all : '—'}%`;
-  sunriseEl.textContent = fmtTime(data.sys.sunrise, data.timezone || 0);
-  sunsetEl.textContent = fmtTime(data.sys.sunset, data.timezone || 0);
+  if(humidityEl) humidityEl.textContent = `${data.main.humidity}%`;
+  if(windEl) windEl.textContent = formatWind(data.wind.speed);
+  if(pressureEl) pressureEl.textContent = `${data.main.pressure} hPa`;
+  if(cloudsEl) cloudsEl.textContent = `${data.clouds && data.clouds.all ? data.clouds.all : '—'}%`;
+  if(sunriseEl) sunriseEl.textContent = fmtTime(data.sys.sunrise, data.timezone || 0);
+  if(sunsetEl) sunsetEl.textContent = fmtTime(data.sys.sunset, data.timezone || 0);
 
   setWeatherBg(main);
-  lastSaved.textContent = `Last: ${new Date().toLocaleString()}`;
+  if(lastSaved) lastSaved.textContent = `Last: ${new Date().toLocaleString()}`;
   localStorage.setItem('weather_last_city', `${data.name},${data.sys.country}`);
 }
 
 function renderForecast(data){
-  if(!data || !data.list) { forecastList.innerHTML = ''; return; }
+  if(!data || !data.list) { if(forecastList) forecastList.innerHTML = ''; return; }
 
   const groups = {};
   data.list.forEach(item => {
@@ -227,7 +228,7 @@ function renderForecast(data){
   });
 
   const keys = Object.keys(groups).slice(0,5);
-  forecastList.innerHTML = '';
+  if(forecastList) forecastList.innerHTML = '';
   keys.forEach(k => {
     const items = groups[k];
     const temps = items.map(i => i.main.temp);
@@ -249,7 +250,7 @@ function renderForecast(data){
       <div class="forecast-temp">${avg}°C</div>
       <div class="forecast-desc">${capitalize(desc)}</div>
     `;
-    forecastList.appendChild(el);
+    if(forecastList) forecastList.appendChild(el);
   });
 }
 
@@ -325,6 +326,7 @@ function removeFavorite(city){
 }
 
 function renderFavorites(){
+  if(!favoritesListEl) return;
   favoritesListEl.innerHTML = '';
   if(favorites.length === 0){
     const li = document.createElement('li');
@@ -342,7 +344,7 @@ function renderFavorites(){
     // load handler
     li.querySelector('.btn').addEventListener('click', (e)=>{
       const c = e.currentTarget.dataset.city;
-      cityInput.value = c;
+      if(cityInput) cityInput.value = c;
       searchCity(c);
     });
     li.querySelector('.remove-btn').addEventListener('click', (e)=>{
@@ -399,40 +401,41 @@ function useMyLocation(){
 }
 
 // ---------- UI events ----------
-searchBtn.addEventListener('click', ()=> {
+if (searchBtn) searchBtn.addEventListener('click', ()=> {
   const q = cityInput.value.trim();
   if(q) searchCity(q);
 });
-cityInput.addEventListener('keyup', e => {
+if (cityInput) cityInput.addEventListener('keyup', e => {
   if(e.key === 'Enter') searchBtn.click();
   else handleSuggestions(cityInput.value);
 });
 
 function handleSuggestions(text){
   const val = (text || '').trim().toLowerCase();
-  if(!val){ suggestions.hidden = true; suggestions.innerHTML = ''; return; }
+  if(!val){ if(suggestions) { suggestions.hidden = true; suggestions.innerHTML = ''; } return; }
   const filtered = suggestionsList.filter(s => s.toLowerCase().startsWith(val)).slice(0,8);
-  suggestions.innerHTML = '';
-  if(filtered.length === 0){ suggestions.hidden = true; return; }
+  if(suggestions) suggestions.innerHTML = '';
+  if(filtered.length === 0){ if(suggestions) suggestions.hidden = true; return; }
   filtered.forEach(city => {
     const li = document.createElement('li');
     li.textContent = city;
     li.addEventListener('click', () => {
-      cityInput.value = city;
-      suggestions.hidden = true;
+      if(cityInput) cityInput.value = city;
+      if(suggestions) suggestions.hidden = true;
       searchCity(city);
     });
-    suggestions.appendChild(li);
+    if(suggestions) suggestions.appendChild(li);
   });
-  suggestions.hidden = false;
+  if(suggestions) suggestions.hidden = false;
 }
 document.addEventListener('click', (e)=>{
-  if(!document.querySelector('.search-wrapper').contains(e.target)){
-    suggestions.hidden = true;
+  const sw = document.querySelector('.search-wrapper');
+  if(sw && !sw.contains(e.target)){
+    if(suggestions) suggestions.hidden = true;
   }
 });
 
-unitToggle.addEventListener('click', ()=>{
+if(unitToggle) unitToggle.addEventListener('click', ()=>{
   unitPref = unitPref === 'metric' ? 'imperial' : 'metric';
   localStorage.setItem('weather_unit', unitPref);
   unitToggle.textContent = unitPref === 'metric' ? '°C' : '°F';
@@ -446,27 +449,33 @@ unitToggle.addEventListener('click', ()=>{
   }
 });
 
-themeToggle.addEventListener('click', ()=>{
+if(themeToggle) themeToggle.addEventListener('click', ()=>{
   theme = theme === 'light' ? 'dark' : 'light';
   localStorage.setItem('weather_theme', theme);
   applyTheme();
 });
 
-addFavBtn.addEventListener('click', ()=>{
-  const cur = localStorage.getItem('weather_last_city') || cityInput.value;
+if(addFavBtn) addFavBtn.addEventListener('click', ()=>{
+  const cur = localStorage.getItem('weather_last_city') || (cityInput ? cityInput.value : '');
   if(!cur) { showToast('No city to add'); return; }
   const cityOnly = cur.split(',')[0].trim();
   addFavorite(cityOnly);
 });
 
+// connect location button if present
+if (locBtn) locBtn.addEventListener('click', ()=> useMyLocation());
+
 // ---------- theme & init ----------
 function applyTheme(){
   if(theme === 'dark') document.documentElement.classList.add('dark');
   else document.documentElement.classList.remove('dark');
-  unitToggle.textContent = unitPref === 'metric' ? '°C' : '°F';
+  if(unitToggle) unitToggle.textContent = unitPref === 'metric' ? '°C' : '°F';
 }
 
 async function init(){
+  if(appInitialized) return; // guard against double init
+  appInitialized = true;
+
   applyTheme();
   renderFavorites();
 
@@ -475,7 +484,7 @@ async function init(){
 
   try {
     if(lastCity){
-      cityInput.value = lastCity.split(',')[0];
+      if(cityInput) cityInput.value = lastCity.split(',')[0];
       await searchCity(lastCity.split(',')[0]);
     } else {
       // try geolocation first, fallback to Sacramento
@@ -519,6 +528,7 @@ async function init(){
   }
 }
 
+/* Original init invoked below in your script; we keep it, but guard prevents double-run */
 init();
 
 // ---------- safe fetchCurrentByCoords (duplicate kept for usage) ----------
@@ -547,10 +557,9 @@ window.addEventListener('resize', () => {
 
 // Additional safety: if loader accidentally stays visible when DOM becomes idle, hide it after 20s
 setTimeout(()=> {
-  if(!loader.hidden){
+  if(loader && !loader.hidden){
     loader.hidden = true;
-    app.style.filter = '';
-    app.style.pointerEvents = '';
+    if (app) { app.style.filter = ''; app.style.pointerEvents = ''; }
     showToast('Loader cleared automatically.');
     console.warn('Auto-cleared loader after 20s (safety).');
   }
@@ -562,4 +571,13 @@ document.addEventListener('DOMContentLoaded', ()=> {
     app.style.opacity = 1;
     app.style.visibility = 'visible';
   }
+  // If loader still showing right after DOM ready, hide it (safety)
+  setTimeout(()=> {
+    if (loader && !loader.hidden) {
+      loader.hidden = true;
+      if (app) { app.style.filter = ''; app.style.pointerEvents = ''; }
+      // don't spam with toast on normal fast loads
+      console.info('Cleared loader at DOMContentLoaded safety step.');
+    }
+  }, 600);
 });
