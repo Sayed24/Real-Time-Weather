@@ -1,8 +1,8 @@
-/* Weather • Material 3 Dashboard
+/* Weather • Material 3 Dashboard (with custom SVG icons, hourly Chart.js, favorites)
    - Insert your OpenWeatherMap API key below
-   - This script renders current weather + 5-day forecast,
-     shows both °C and °F, handles geolocation, suggestions,
-     dark/light, loader behavior, and localStorage for prefs.
+   - Features: dual units display, loader fixed, custom SVG icons (material style),
+     hourly chart (Chart.js, next ~24h), favorites list (localStorage), suggestions,
+     geolocation, 5-day forecast, theme toggle.
 */
 
 const OWM_KEY = "<PUT_YOUR_OPENWEATHERMAP_API_KEY_HERE>"; // <-- add your key
@@ -15,7 +15,7 @@ const searchBtn = document.getElementById('searchBtn');
 const locBtn = document.getElementById('locBtn');
 const cityNameEl = document.getElementById('cityName');
 const weatherDesc = document.getElementById('weatherDesc');
-const weatherIcon = document.getElementById('weatherIcon');
+const weatherIcon = document.getElementById('weatherIcon'); // remains an <img>
 const tempNow = document.getElementById('tempNow');
 const tempBoth = document.getElementById('tempBoth');
 const feelsLikeEl = document.getElementById('feelsLike');
@@ -31,18 +31,25 @@ const themeToggle = document.getElementById('themeToggle');
 const lastSaved = document.getElementById('lastSaved');
 const toast = document.getElementById('toast');
 const suggestions = document.getElementById('suggestions');
+const addFavBtn = document.getElementById('addFavBtn');
+const favoritesListEl = document.getElementById('favoritesList');
+const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+
+let hourlyChart = null;
 
 let unitPref = localStorage.getItem('weather_unit') || 'metric'; // 'metric' (C) or 'imperial' (F)
 let theme = localStorage.getItem('weather_theme') || 'light';
 let lastCity = localStorage.getItem('weather_last_city') || '';
+let favorites = JSON.parse(localStorage.getItem('weather_favorites') || '[]');
+
 let suggestionsList = [
   "Sacramento","Folsom","New York","Los Angeles","San Francisco",
   "Houston","Dallas","Chicago","London","Berlin","Dubai",
   "Kabul","Herat","Tokyo","Sydney","Paris","Rome","Madrid"
 ];
 
-// show/hide loader
-function showLoader(show=true){
+// ---------- loader & toast ----------
+function showLoader(show = true){
   if(show){
     loader.hidden = false;
     app.style.filter = 'blur(2px)';
@@ -54,22 +61,22 @@ function showLoader(show=true){
   }
 }
 
-// small toast
-function showToast(msg, ms=3000){
+function showToast(msg, ms=3500){
   toast.textContent = msg;
   toast.hidden = false;
   setTimeout(()=> toast.hidden = true, ms);
 }
 
-// format time using timezone offset seconds
+// ---------- helpers ----------
+function capitalize(s){ if(!s) return ''; return s.charAt(0).toUpperCase() + s.slice(1); }
 function fmtTime(ts, tzOffset){
   try{
-    const d = new Date((ts + tzOffset) * 1000);
+    const d = new Date((ts + (tzOffset||0)) * 1000);
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }catch(e){ return '—'; }
 }
-
-// set animated app background by main weather
+function cToF(c){ return (c * 9/5) + 32; }
+function formatWind(ms){ const mph = Math.round(ms * 2.23694); return `${ms} m/s (${mph} mph)`; }
 function setWeatherBg(main){
   const appRoot = document.querySelector('.app');
   appRoot.classList.remove('sunny','rainy','cloudy','snow');
@@ -81,50 +88,94 @@ function setWeatherBg(main){
   else if(main.includes('snow')) appRoot.classList.add('snow');
 }
 
-// convert C <-> F correctly (digit-by-digit mentality per instructions)
-function cToF(c){ return (c * 9/5) + 32; }
-function fToC(f){ return (f - 32) * 5/9; }
+// ---------- custom Material-style SVGs as data-URLs ----------
+function svgDataFor(main, description){
+  // create a simple material-ish SVG for main weather types
+  const baseFill = '#6750A4'; // primary purple
+  const sunFill = '#FFB300';
+  const cloudFill = '#9AA4BF';
+  const rainFill = '#4DA6FF';
+  const snowFill = '#9FD8FF';
+  const thunderFill = '#FFC857';
 
-// fetch current weather by city name (units param chooses which unit the API returns)
+  main = (main || '').toLowerCase();
+  let svg = '';
+
+  if(main.includes('clear')) {
+    svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='100%' height='100%' rx='12' fill='none'/><g transform='translate(6,6)'><circle cx='22' cy='22' r='10' fill='${sunFill}'/><g stroke='${sunFill}' stroke-width='2' stroke-linecap='round'><line x1='22' y1='-2' x2='22' y2='8'/><line x1='22' y1='36' x2='22' y2='46'/><line x1='-2' y1='22' x2='8' y2='22'/><line x1='36' y1='22' x2='46' y2='22'/></g></g></svg>`;
+  } else if(main.includes('cloud')) {
+    svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(5,18)'><ellipse cx='26' cy='10' rx='18' ry='10' fill='${cloudFill}' /><ellipse cx='40' cy='16' rx='12' ry='8' fill='${cloudFill}'/></g></svg>`;
+  } else if(main.includes('rain') || main.includes('drizzle')) {
+    svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(5,10)'><ellipse cx='26' cy='8' rx='18' ry='8' fill='${cloudFill}' /><g fill='${rainFill}'><path d='M20 28c0 3-4 7-4 7s-4-4-4-7 4-3 4 0z'/><path d='M32 28c0 3-4 7-4 7s-4-4-4-7 4-3 4 0z'/></g></g></svg>`;
+  } else if(main.includes('thunder')) {
+    svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(5,6)'><ellipse cx='26' cy='8' rx='18' ry='8' fill='${cloudFill}' /><polygon points='26,20 20,36 30,36 24,52 44,28 34,28' fill='${thunderFill}'/></g></svg>`;
+  } else if(main.includes('snow')) {
+    svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(5,6)'><ellipse cx='26' cy='8' rx='18' ry='8' fill='${cloudFill}' /><g fill='${snowFill}' transform='translate(8,28)'><circle cx='8' cy='4' r='2'/><circle cx='18' cy='14' r='2'/><circle cx='28' cy='6' r='2'/></g></g></svg>`;
+  } else {
+    // fallback simple sun/cloud combo
+    svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(5,6)'><circle cx='12' cy='12' r='6' fill='${sunFill}'/><ellipse cx='34' cy='18' rx='16' ry='8' fill='${cloudFill}'/></g></svg>`;
+  }
+
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+// ---------- API calls ----------
+async function fetchJSON(url){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 async function fetchCurrentByCity(q){
   if(!OWM_KEY || OWM_KEY.startsWith('<')) {
-    showToast('Add your OpenWeatherMap API key in script.js (OWM_KEY).');
     throw new Error('Missing API key');
   }
   const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(q)}&appid=${OWM_KEY}&units=metric`;
-  const res = await fetch(url);
-  if(!res.ok) throw new Error('City not found');
-  return res.json();
+  return fetchJSON(url);
 }
 
-// fetch forecast (3-hour steps) by coordinates
 async function fetchForecastByCoords(lat, lon){
+  if(!OWM_KEY || OWM_KEY.startsWith('<')) {
+    throw new Error('Missing API key');
+  }
   const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric`;
-  const res = await fetch(url);
-  if(!res.ok) throw new Error('Forecast error');
-  return res.json();
+  return fetchJSON(url);
 }
 
-// render current weather (we use metric from API then compute F)
+async function fetchCurrentByCoords(lat, lon){
+  if(!OWM_KEY || OWM_KEY.startsWith('<')) {
+    throw new Error('Missing API key');
+  }
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric`;
+  return fetchJSON(url);
+}
+
+// ---------- rendering ----------
 function renderCurrent(data){
   if(!data) return;
   const main = data.weather && data.weather[0] ? data.weather[0].main : '';
   const desc = data.weather && data.weather[0] ? data.weather[0].description : '';
   cityNameEl.textContent = `${data.name}, ${data.sys.country}`;
   weatherDesc.textContent = capitalize(desc || '—');
-  const icon = data.weather && data.weather[0] ? data.weather[0].icon : '';
-  weatherIcon.src = icon ? `https://openweathermap.org/img/wn/${icon}@2x.png` : '';
+
+  // use our custom SVGs (material-style) as data-URIs
+  weatherIcon.src = svgDataFor(main, desc);
   weatherIcon.alt = desc || '';
 
-  // API returned metric temps (°C)
   const tempC = Math.round(data.main.temp);
   const tempF = Math.round(cToF(tempC));
-  tempNow.textContent = `${tempC}°C`; // primary show metric (but we also show both)
+  // show primary according to unitPref
+  if(unitPref === 'metric'){
+    tempNow.textContent = `${tempC}°C`;
+    feelsLikeEl.textContent = `Feels like ${Math.round(data.main.feels_like)}°C`;
+  } else {
+    tempNow.textContent = `${tempF}°F`;
+    feelsLikeEl.textContent = `Feels like ${Math.round(cToF(data.main.feels_like))}°F`;
+  }
   tempBoth.textContent = `${tempC}°C / ${tempF}°F`;
-  feelsLikeEl.textContent = `Feels like ${Math.round(data.main.feels_like)}°C`;
 
   humidityEl.textContent = `${data.main.humidity}%`;
-  windEl.textContent = formatWind(data.wind.speed); // ms and mph when needed
+  windEl.textContent = formatWind(data.wind.speed);
   pressureEl.textContent = `${data.main.pressure} hPa`;
   cloudsEl.textContent = `${data.clouds && data.clouds.all ? data.clouds.all : '—'}%`;
   sunriseEl.textContent = fmtTime(data.sys.sunrise, data.timezone || 0);
@@ -135,14 +186,11 @@ function renderCurrent(data){
   localStorage.setItem('weather_last_city', `${data.name},${data.sys.country}`);
 }
 
-// create forecast day cards aggregated
 function renderForecast(data){
   if(!data || !data.list) { forecastList.innerHTML = ''; return; }
 
-  // group by human-readable day string
   const groups = {};
   data.list.forEach(item => {
-    // use local date string for day grouping
     const dayKey = new Date(item.dt * 1000).toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
     if(!groups[dayKey]) groups[dayKey] = [];
     groups[dayKey].push(item);
@@ -154,20 +202,20 @@ function renderForecast(data){
     const items = groups[k];
     const temps = items.map(i => i.main.temp);
     const avg = Math.round(temps.reduce((a,b)=>a+b,0)/temps.length);
-    // pick most frequent icon
+    // choose most frequent icon
     const freq = {};
     items.forEach(i => {
-      const key = i.weather[0].icon + '|' + i.weather[0].description;
+      const key = i.weather[0].main + '|' + i.weather[0].description;
       freq[key] = (freq[key] || 0) + 1;
     });
     const top = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0];
-    const [icon, desc] = top.split('|');
+    const [main, desc] = top.split('|');
 
     const el = document.createElement('div');
     el.className = 'forecast-item';
     el.innerHTML = `
       <div class="forecast-day">${k}</div>
-      <img src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="${desc}" />
+      <img src="${svgDataFor(main, desc)}" alt="${desc}" />
       <div class="forecast-temp">${avg}°C</div>
       <div class="forecast-desc">${capitalize(desc)}</div>
     `;
@@ -175,16 +223,107 @@ function renderForecast(data){
   });
 }
 
-// wind display (show m/s and mph)
-function formatWind(ms){
-  const mph = Math.round(ms * 2.23694);
-  return `${ms} m/s (${mph} mph)`;
+// ---------- hourly chart (using forecast 3-hour data) ----------
+function renderHourlyChart(forecastData){
+  if(!forecastData || !forecastData.list) {
+    if(hourlyChart) { hourlyChart.destroy(); hourlyChart = null; }
+    return;
+  }
+
+  // Take next 8 data points (~24 hours)
+  const points = forecastData.list.slice(0,8);
+  const labels = points.map(p => {
+    return new Date(p.dt * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  });
+  const temps = points.map(p => Math.round(p.main.temp));
+
+  // create or update chart
+  if(hourlyChart) {
+    hourlyChart.data.labels = labels;
+    hourlyChart.data.datasets[0].data = temps;
+    hourlyChart.update();
+  } else {
+    hourlyChart = new Chart(hourlyCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Temperature (°C)',
+          data: temps,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 4,
+          borderWidth: 2,
+          backgroundColor: 'rgba(103,80,164,0.12)',
+          borderColor: '#6750A4'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: false }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: 'index', intersect: false }
+        }
+      }
+    });
+  }
 }
 
-// utility
-function capitalize(s){ if(!s) return ''; return s.charAt(0).toUpperCase() + s.slice(1); }
+// ---------- favorites ----------
+function saveFavorites(){
+  localStorage.setItem('weather_favorites', JSON.stringify(favorites));
+  renderFavorites();
+}
 
-// search flow: city -> fetch current -> fetch forecast -> render
+function addFavorite(city){
+  city = city.trim();
+  if(!city) return;
+  if(favorites.includes(city)) { showToast('Already in favorites'); return; }
+  favorites.unshift(city);
+  if(favorites.length > 10) favorites.pop();
+  saveFavorites();
+  showToast('Added to favorites');
+}
+
+function removeFavorite(city){
+  favorites = favorites.filter(c => c !== city);
+  saveFavorites();
+}
+
+function renderFavorites(){
+  favoritesListEl.innerHTML = '';
+  if(favorites.length === 0){
+    const li = document.createElement('li');
+    li.textContent = 'No favorites yet';
+    favoritesListEl.appendChild(li);
+    return;
+  }
+  favorites.forEach(city => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="fav-city">${city}</span>
+      <div>
+        <button class="btn" data-city="${city}" aria-label="Load ${city}">Load</button>
+        <button class="remove-btn" data-city="${city}" aria-label="Remove ${city}">✕</button>
+      </div>`;
+    // load handler
+    li.querySelector('.btn').addEventListener('click', (e)=>{
+      const c = e.currentTarget.dataset.city;
+      cityInput.value = c;
+      searchCity(c);
+    });
+    li.querySelector('.remove-btn').addEventListener('click', (e)=>{
+      const c = e.currentTarget.dataset.city;
+      removeFavorite(c);
+    });
+    favoritesListEl.appendChild(li);
+  });
+}
+
+// ---------- main flows ----------
 async function searchCity(q){
   if(!q) { showToast('Type a city name.'); return; }
   try{
@@ -193,14 +332,15 @@ async function searchCity(q){
     renderCurrent(current);
     const forecast = await fetchForecastByCoords(current.coord.lat, current.coord.lon);
     renderForecast(forecast);
+    renderHourlyChart(forecast);
   } catch(err){
+    console.error(err);
     showToast(err.message || 'Error fetching weather');
   } finally {
     showLoader(false);
   }
 }
 
-// geolocation flow
 function useMyLocation(){
   if(!navigator.geolocation){
     showToast('Geolocation not supported.');
@@ -215,7 +355,9 @@ function useMyLocation(){
       renderCurrent(current);
       const forecast = await fetchForecastByCoords(lat, lon);
       renderForecast(forecast);
-    } catch(e){
+      renderHourlyChart(forecast);
+    } catch(err){
+      console.error(err);
       showToast('Unable to fetch weather for your location.');
     } finally {
       showLoader(false);
@@ -226,18 +368,7 @@ function useMyLocation(){
   }, {timeout:10000});
 }
 
-async function fetchCurrentByCoords(lat, lon){
-  if(!OWM_KEY || OWM_KEY.startsWith('<')) {
-    showToast('Add your OpenWeatherMap API key in script.js (OWM_KEY).');
-    throw new Error('Missing API key');
-  }
-  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric`;
-  const res = await fetch(url);
-  if(!res.ok) throw new Error('Weather error');
-  return res.json();
-}
-
-// UI events
+// ---------- UI events ----------
 searchBtn.addEventListener('click', ()=> {
   const q = cityInput.value.trim();
   if(q) searchCity(q);
@@ -247,7 +378,6 @@ cityInput.addEventListener('keyup', e => {
   else handleSuggestions(cityInput.value);
 });
 
-// suggestions behavior
 function handleSuggestions(text){
   const val = (text || '').trim().toLowerCase();
   if(!val){ suggestions.hidden = true; suggestions.innerHTML = ''; return; }
@@ -266,21 +396,17 @@ function handleSuggestions(text){
   });
   suggestions.hidden = false;
 }
-
-// hide suggestions when clicking outside
 document.addEventListener('click', (e)=>{
   if(!document.querySelector('.search-wrapper').contains(e.target)){
     suggestions.hidden = true;
   }
 });
 
-// unit toggle: this control keeps showing both units but toggles which unit is primary shown in tempNow & feelsLike
 unitToggle.addEventListener('click', ()=>{
   unitPref = unitPref === 'metric' ? 'imperial' : 'metric';
   localStorage.setItem('weather_unit', unitPref);
   unitToggle.textContent = unitPref === 'metric' ? '°C' : '°F';
-
-  // re-render last city with new primary unit if present
+  // re-render last city to update primary unit display
   const last = localStorage.getItem('weather_last_city');
   if(last){
     const cityOnly = last.split(',')[0];
@@ -290,92 +416,86 @@ unitToggle.addEventListener('click', ()=>{
   }
 });
 
-// theme toggle
 themeToggle.addEventListener('click', ()=>{
   theme = theme === 'light' ? 'dark' : 'light';
   localStorage.setItem('weather_theme', theme);
   applyTheme();
 });
 
-// apply theme & unit on startup
+addFavBtn.addEventListener('click', ()=>{
+  const cur = localStorage.getItem('weather_last_city') || cityInput.value;
+  if(!cur) { showToast('No city to add'); return; }
+  const cityOnly = cur.split(',')[0].trim();
+  addFavorite(cityOnly);
+});
+
+// ---------- theme & init ----------
 function applyTheme(){
   if(theme === 'dark') document.documentElement.classList.add('dark');
   else document.documentElement.classList.remove('dark');
   unitToggle.textContent = unitPref === 'metric' ? '°C' : '°F';
 }
 
-// initial loader logic + startup behavior
-(async function init(){
-  // bind buttons
-  locBtn.addEventListener('click', useMyLocation);
-
+async function init(){
   applyTheme();
+  renderFavorites();
 
-  // show the app while loader is hidden initially
+  // ensure loader shown while we try initial loads, but hide on any error/finally
   showLoader(true);
 
-  // attempt to load last city, otherwise try geolocation, otherwise default
-  if(lastCity){
-    cityInput.value = lastCity.split(',')[0];
-    try{
+  try {
+    if(lastCity){
+      cityInput.value = lastCity.split(',')[0];
       await searchCity(lastCity.split(',')[0]);
-    } catch(e){
-      // fallback to geolocation
-      try{ useMyLocation(); }catch{}
-    } finally { showLoader(false); showApp(); }
-  } else {
-    // try geolocation first; if denied or fails, load default Sacramento
-    if(navigator && navigator.geolocation){
-      // attempt geolocation (but still fallback)
-      navigator.geolocation.getCurrentPosition(async pos => {
-        try{
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          const current = await fetchCurrentByCoords(lat, lon);
-          renderCurrent(current);
-          const forecast = await fetchForecastByCoords(lat, lon);
-          renderForecast(forecast);
-        } catch(e){
-          await searchCity('Sacramento');
-        } finally {
-          showLoader(false);
-          showApp();
-        }
-      }, async err => {
-        // permission denied or unavailable: load default
-        await searchCity('Sacramento');
-        showLoader(false);
-        showApp();
-      }, {timeout:8000});
     } else {
-      await searchCity('Sacramento');
-      showLoader(false);
-      showApp();
+      // try geolocation first, fallback to Sacramento
+      if(navigator && navigator.geolocation){
+        await new Promise((resolve) => {
+          let resolved = false;
+          navigator.geolocation.getCurrentPosition(async pos => {
+            try{
+              const lat = pos.coords.latitude;
+              const lon = pos.coords.longitude;
+              const current = await fetchCurrentByCoords(lat, lon);
+              renderCurrent(current);
+              const forecast = await fetchForecastByCoords(lat, lon);
+              renderForecast(forecast);
+              renderHourlyChart(forecast);
+            } catch(e){
+              console.warn('geo -> fallback', e);
+              await searchCity('Sacramento');
+            } finally {
+              resolved = true;
+              resolve();
+            }
+          }, async err => {
+            // fallback
+            await searchCity('Sacramento');
+            resolved = true;
+            resolve();
+          }, {timeout:7000});
+          // safety timeout in case geolocation never resolves
+          setTimeout(()=> { if(!resolved){ searchCity('Sacramento').finally(()=>resolve()); } }, 9000);
+        });
+      } else {
+        await searchCity('Sacramento');
+      }
     }
+  } catch(err){
+    console.error('init error', err);
+    showToast(err.message || 'Initialization error');
+  } finally {
+    showLoader(false);
   }
-})();
-
-function showApp(){
-  // ensure app is shown (unblur)
-  showLoader(false);
-  // nothing else needed; DOM already visible
 }
 
-// helper to reformat primary units based on unitPref (we fetch metric, so convert if necessary)
-function reformatPrimaryUnitsDisplayed(){
-  // If there's a displayed temperature, re-run search on current displayed city to update primary unit
-  const last = localStorage.getItem('weather_last_city');
-  if(last) searchCity(last.split(',')[0]);
-}
+init();
 
-// small util to fetch current by coords already defined above (used earlier)
+// ---------- safe fetchCurrentByCoords (duplicate kept for usage) ----------
 async function fetchCurrentByCoords(lat, lon){
   if(!OWM_KEY || OWM_KEY.startsWith('<')) {
-    showToast('Add your OpenWeatherMap API key in script.js (OWM_KEY).');
     throw new Error('Missing API key');
   }
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric`;
-  const res = await fetch(url);
-  if(!res.ok) throw new Error('Weather error');
-  return res.json();
+  return fetchJSON(url);
 }
