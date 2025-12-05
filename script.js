@@ -5,7 +5,7 @@
      geolocation, 5-day forecast, theme toggle.
 */
 
-const OWM_KEY = "<PUT_YOUR_OPENWEATHERMAP_API_KEY_HERE>"; // <-- add your key
+const OWM_KEY = "YOUR_OPENWEATHER_API_KEY>"; // <-- add your key
 
 // DOM refs
 const app = document.getElementById('app');
