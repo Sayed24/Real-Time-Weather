@@ -2,127 +2,200 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <!-- Improved viewport for mobile / iPhone Chrome -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>Weather • Material Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#6750a4" />
+  <meta name="description" content="Real-Time Weather — a responsive Material 3 weather and location dashboard by Sayedrahim Sadat." />
+  <title>Real-Time Weather • Material Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☀️</text></svg>">
+  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <meta name="theme-color" content="#6750A4" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="script.js" defer></script>
 </head>
 <body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
   <main class="app" id="app">
     <header class="topbar">
-      <div class="brand">
-        <div class="logo">W</div>
+      <a class="brand" href="#top" aria-label="Real-Time Weather home">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="img"><circle cx="24" cy="24" r="9"/><path d="M24 4v7M24 37v7M4 24h7M37 24h7M9.9 9.9l5 5M33.1 33.1l5 5M38.1 9.9l-5 5M14.9 33.1l-5 5"/></svg>
+        </div>
         <div class="title">
-          <div class="h1">Weather</div>
+          <div class="h1">Real-Time Weather</div>
           <div class="muted">By Sayedrahim Sadat</div>
         </div>
-      </div>
+      </a>
 
       <div class="controls">
-        <div class="unit-toggle" id="unitToggle" title="Toggle °C / °F">°C</div>
-        <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">🌓</button>
+        <button class="control-btn unit-toggle" id="unitToggle" type="button" aria-label="Toggle Celsius and Fahrenheit" title="Toggle °C / °F">°C</button>
+        <button class="control-btn icon-btn" id="themeToggle" type="button" aria-label="Toggle dark mode" title="Toggle theme">☾</button>
       </div>
     </header>
 
-    <section class="search-section card">
-      <div class="search-left">
-        <div class="search-wrapper">
-          <input id="cityInput" class="search-input" placeholder="Search city, e.g. London" autocomplete="off" />
-          <ul id="suggestions" class="suggestions" hidden></ul>
-        </div>
-
-        <div class="search-actions">
-          <button id="searchBtn" class="btn">Search</button>
-          <button id="locBtn" class="btn outline">Use My Location</button>
-        </div>
+    <section class="hero card" id="top">
+      <div class="hero-copy">
+        <span class="eyebrow">LIVE WEATHER • LOCATION AWARE</span>
+        <h1>Weather intelligence,<br><span>at a glance.</span></h1>
+        <p>Search any city, use your current location, compare units, explore the next 24 hours, and save places you care about.</p>
       </div>
 
-      <div class="last-favorites">
-        <div class="last-saved muted" id="lastSaved">Last: —</div>
-        <button id="addFavBtn" class="btn outline small">☆ Add Favorite</button>
+      <div class="search-panel">
+        <label class="search-label" for="cityInput">Find a city</label>
+        <div class="search-left">
+          <div class="search-wrapper">
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input id="cityInput" class="search-input" placeholder="Search city, e.g. London" autocomplete="off" spellcheck="false" />
+            <ul id="suggestions" class="suggestions" hidden></ul>
+          </div>
+
+          <div class="search-actions">
+            <button id="searchBtn" class="btn btn-primary" type="button">Search</button>
+            <button id="locBtn" class="btn btn-secondary" type="button">
+              <span aria-hidden="true">⌖</span> Use My Location
+            </button>
+          </div>
+        </div>
+
+        <div class="search-meta">
+          <div class="last-saved muted" id="lastSaved">Ready to search</div>
+          <button id="addFavBtn" class="text-btn" type="button">☆ Add current city to favorites</button>
+        </div>
       </div>
     </section>
 
-    <section class="dashboard">
-      <div class="current card" id="currentCard" aria-live="polite">
-        <div class="current-top">
+    <section class="dashboard" aria-label="Weather dashboard">
+      <article class="current card" id="currentCard" aria-live="polite">
+        <div class="section-head">
           <div>
-            <div class="city" id="cityName">—</div>
-            <div class="desc" id="weatherDesc">—</div>
+            <p class="section-kicker">CURRENT CONDITIONS</p>
+            <div class="city-row">
+              <h2 class="city" id="cityName">Sacramento, US</h2>
+              <span class="live-badge"><span></span> Live</span>
+            </div>
+            <div class="desc" id="weatherDesc">Weather data will appear here</div>
           </div>
-          <div class="temp-block">
-            <!-- still an <img> so nothing removed; we set src to SVG data URIs -->
+          <div class="local-time-block">
+            <span class="muted">Local time</span>
+            <strong id="localTime">—</strong>
+          </div>
+        </div>
+
+        <div class="current-main">
+          <div class="weather-visual">
             <img id="weatherIcon" src="" alt="" class="weather-icon" />
             <div class="temp-value">
-              <!-- Primary temp (follows unit preference) -->
               <div id="tempNow">—°</div>
-              <!-- Always show both units -->
               <div class="dual-temp muted" id="tempBoth">—°C / —°F</div>
               <div class="feels muted" id="feelsLike">Feels like —°</div>
             </div>
+          </div>
+
+          <div class="range-block">
+            <div><span>Today high</span><strong id="tempHigh">—°</strong></div>
+            <div><span>Today low</span><strong id="tempLow">—°</strong></div>
           </div>
         </div>
 
         <div class="current-stats">
           <div class="stat">
-            <div class="stat-value" id="humidity">—%</div>
-            <div class="stat-label">Humidity</div>
+            <span class="stat-icon">◌</span>
+            <div><div class="stat-value" id="humidity">—%</div><div class="stat-label">Humidity</div></div>
           </div>
           <div class="stat">
-            <div class="stat-value" id="wind">— m/s</div>
-            <div class="stat-label">Wind</div>
+            <span class="stat-icon">➤</span>
+            <div><div class="stat-value" id="wind">—</div><div class="stat-label" id="windLabel">Wind</div></div>
           </div>
           <div class="stat">
-            <div class="stat-value" id="pressure">— hPa</div>
-            <div class="stat-label">Pressure</div>
+            <span class="stat-icon">◔</span>
+            <div><div class="stat-value" id="pressure">— hPa</div><div class="stat-label">Pressure</div></div>
           </div>
           <div class="stat">
-            <div class="stat-value" id="clouds">—%</div>
-            <div class="stat-label">Clouds</div>
+            <span class="stat-icon">☁</span>
+            <div><div class="stat-value" id="clouds">—%</div><div class="stat-label">Cloud cover</div></div>
+          </div>
+          <div class="stat">
+            <span class="stat-icon">◒</span>
+            <div><div class="stat-value" id="visibility">—</div><div class="stat-label">Visibility</div></div>
+          </div>
+          <div class="stat">
+            <span class="stat-icon">≈</span>
+            <div><div class="stat-value" id="dewPoint">—°</div><div class="stat-label">Dew point</div></div>
           </div>
         </div>
 
         <div class="sun-times">
-          <div>Sunrise: <span id="sunrise">—</span></div>
-          <div>Sunset: <span id="sunset">—</span></div>
+          <div class="sun-item"><span class="sun-icon">☀</span><div><span>Sunrise</span><strong id="sunrise">—</strong></div></div>
+          <div class="sun-track" aria-hidden="true"><span></span></div>
+          <div class="sun-item"><span class="sun-icon">◐</span><div><span>Sunset</span><strong id="sunset">—</strong></div></div>
         </div>
-      </div>
+      </article>
 
-      <div class="forecast card" id="forecastCard">
-        <div class="forecast-title">5-Day Forecast</div>
-        <div class="forecast-list" id="forecastList">
-          <!-- forecast cards injected here -->
-        </div>
+      <aside class="side-column">
+        <section class="forecast card" id="forecastCard">
+          <div class="section-head compact">
+            <div><p class="section-kicker">OUTLOOK</p><h2>5-Day Forecast</h2></div>
+          </div>
+          <div class="forecast-list" id="forecastList" aria-label="5-day weather forecast"></div>
+        </section>
 
-        <div class="hourly-chart-section">
-          <div class="hourly-title">Next 24 hours</div>
-          <canvas id="hourlyChart" height="120"></canvas>
-        </div>
-
-        <div class="favorites-section card small-card" id="favoritesCard">
-          <div class="fav-title">Favorites</div>
+        <section class="favorites-section card" id="favoritesCard">
+          <div class="section-head compact">
+            <div><p class="section-kicker">SAVED PLACES</p><h2>Favorites</h2></div>
+            <span class="count-pill" id="favoriteCount">0</span>
+          </div>
           <ul id="favoritesList" class="favorites-list"></ul>
+        </section>
+      </aside>
+    </section>
+
+    <section class="insights-grid">
+      <article class="hourly-chart-section card">
+        <div class="section-head compact">
+          <div><p class="section-kicker">TEMPERATURE TREND</p><h2>Next 24 Hours</h2></div>
+          <span class="muted" id="chartUnitLabel">°C</span>
         </div>
+        <div class="chart-shell">
+          <canvas id="hourlyChart" aria-label="24 hour temperature chart"></canvas>
+          <div class="chart-fallback" id="chartFallback" hidden>Chart unavailable. The forecast cards are still available.</div>
+        </div>
+      </article>
+
+      <article class="card recent-card">
+        <div class="section-head compact">
+          <div><p class="section-kicker">HISTORY</p><h2>Recent Searches</h2></div>
+          <button class="text-btn" id="clearRecentBtn" type="button">Clear</button>
+        </div>
+        <div id="recentSearches" class="recent-searches"></div>
+      </article>
+    </section>
+
+    <section class="portfolio-note card">
+      <div>
+        <p class="section-kicker">PORTFOLIO PROJECT</p>
+        <h2>Built for real-world browser APIs.</h2>
+        <p>This dashboard demonstrates REST API integration, Geolocation API usage, responsive UI engineering, client-side persistence, data visualization, accessibility, and graceful error handling.</p>
+      </div>
+      <div class="tech-chips" aria-label="Technologies used">
+        <span>HTML5</span><span>CSS3</span><span>Vanilla JS</span><span>OpenWeather</span><span>Chart.js</span><span>LocalStorage</span>
       </div>
     </section>
 
     <footer class="footer muted">
-      <div>Built with ❤️ • OpenWeatherMap API • Material 3 design</div>
-      <div class="small">Weather app built by Sayedrahim Sadat using OpenWeatherMap API</div>
+      <div>Built with ♥ • OpenWeather API • Material-inspired design</div>
+      <div class="small">Designed & developed by Sayedrahim Sadat</div>
     </footer>
-
-    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
-
-    <!-- Loader: visible/hidden controlled by script. Kept in DOM. -->
-    <div id="loader" class="loader" hidden>
-      <div class="spinner"></div>
-    </div>
   </main>
 
-  <script src="script.js"></script>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <div id="loader" class="loader" role="status" aria-live="polite" aria-label="Loading weather data" hidden>
+    <div class="loader-card">
+      <div class="spinner"></div>
+      <strong>Updating weather</strong>
+      <span>Fetching the latest conditions…</span>
+    </div>
+  </div>
 </body>
 </html>

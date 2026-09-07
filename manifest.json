@@ -1,0 +1,10 @@
+{
+  "name": "Real-Time Weather Dashboard",
+  "short_name": "Weather",
+  "description": "A responsive real-time weather and location dashboard.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f6fb",
+  "theme_color": "#6750a4",
+  "icons": []
+}
